@@ -26,11 +26,16 @@ class GeolocatorApp extends StatefulWidget {
 }
 
 class _GeolocatorAppState extends State<GeolocatorApp> {
-  Position? _currentLocation;
   late bool servicePermission = false;
   late LocationPermission permission;
 
+  Position? _currentLocation;
+  Location? _selectedLocation;
+
   String _currentAddress = "";
+  String _selectedAddress = "";
+
+  int _distance = 0;
 
   Future<Position> _getCurrentLocation() async {
     // check if the user have permission to access location service
@@ -57,7 +62,49 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
         _currentAddress = "${place.locality}, ${place.country}";
       });
     } catch (e) {
-      print(e);
+      print('Error: ${e}');
+    }
+  }
+
+  String _getSelectedAddress() {
+    String address = "Chicago";
+      setState(() {
+        _selectedAddress = address;
+      });
+    return address;
+  }
+
+  _getCoordinatesFromAddress() async {
+    try {
+
+      List<Location> locations = await locationFromAddress(_selectedAddress);
+
+      setState(() {
+        _selectedLocation = locations.first;
+      });
+      print('Selected location - Latitude: ${_selectedLocation?.latitude}, Longitude: ${_selectedLocation?.longitude}');
+    } catch (e) {
+      print('Error: ${e}');
+    }
+  }
+
+  // calculate distance between current location and selected location
+  _calculateDistance() {
+    if (_currentLocation != null && _selectedLocation != null) { 
+      double distanceInMeters = Geolocator.distanceBetween(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+        _selectedLocation!.latitude,
+        _selectedLocation!.longitude,
+      );
+      
+      // Convert distance in meters to miles
+      const double metersToMiles = 1609.34;
+      int distanceInMiles = (distanceInMeters / metersToMiles).round();
+
+      setState(() {
+        _distance = distanceInMiles;
+      });
     }
   }
 
@@ -65,7 +112,7 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Get Current Location"),
+        title: Text("Geolocator"),
         centerTitle: true,
       ),
       body: Center(
@@ -73,8 +120,18 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            ElevatedButton(
+              onPressed: () async {
+                _currentLocation = await _getCurrentLocation();
+                await _getAddressFromCoordinates();
+              }, 
+              child: Text("get current location")
+            ),
+
+            SizedBox(height: 30),
+
             Text(
-              "Location coordinates", 
+              "Current location coordinates", 
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold
@@ -86,7 +143,7 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
             SizedBox(height: 30),
 
             Text(
-              "Location address", 
+              "Current location address", 
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold
@@ -99,13 +156,58 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
             
             ElevatedButton(
               onPressed: () async {
-                _currentLocation = await _getCurrentLocation();
-                await _getAddressFromCoordinates();
-                print("${_currentLocation}");
-                print("${_currentAddress}");
+                _selectedAddress = _getSelectedAddress();
+                await _getCoordinatesFromAddress();
+                print("${_selectedLocation}");
+                print("${_selectedAddress}");
               }, 
-              child: Text("get location")
-            )
+              child: Text("get selected location")
+            ),
+
+            SizedBox(height: 30),
+
+            Text(
+              "Selected location coordinates", 
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold
+              )
+            ),
+            SizedBox(height: 6),
+            Text("Latitude: ${_selectedLocation?.latitude}; Longitude: ${_selectedLocation?.longitude}"),
+
+            SizedBox(height: 30),
+
+            Text(
+              "Selected location address", 
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold
+              )
+            ),
+            SizedBox(height: 6),
+            Text("${_selectedAddress}"),
+
+            SizedBox(height: 50),
+            
+            ElevatedButton(
+              onPressed: () async {
+                await _calculateDistance();
+              }, 
+              child: Text("calculate distance")
+            ),
+
+            SizedBox(height: 30),
+
+            Text(
+              "Distance", 
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold
+              )
+            ),
+            SizedBox(height: 6),
+            Text("${_distance} miles"),
           ],
       )),
     );
