@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+const List<String> cityList = <String>['Chicago', 'New York', 'Paris', 'Singapore'];
+
 void main() {
   runApp(const MyApp());
 }
@@ -13,19 +15,19 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: const GeolocatorApp(),
+      home: const LocationScreen(),
     );
   }
 }
 
-class GeolocatorApp extends StatefulWidget {
-  const GeolocatorApp({super.key});
+class LocationScreen extends StatefulWidget {
+  const LocationScreen({super.key});
 
   @override
-  State<GeolocatorApp> createState() => _GeolocatorAppState();
+  _LocationScreenState createState() => _LocationScreenState();
 }
 
-class _GeolocatorAppState extends State<GeolocatorApp> {
+class _LocationScreenState extends State<LocationScreen> {
   late bool servicePermission = false;
   late LocationPermission permission;
 
@@ -33,11 +35,30 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
   Location? _selectedLocation;
 
   String _currentAddress = "";
-  String _selectedAddress = "";
+  String _selectedAddress = cityList.first;
 
   int _distance = 0;
 
-  Future<Position> _getCurrentLocation() async {
+  @override
+  initState() {
+    super.initState();
+
+     // Fetch location when the app starts
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _getCurrentLocation();
+    if (_currentLocation != null) {
+      await _getAddressFromCoordinates(_currentLocation!);
+    }
+    if (_selectedAddress != "") {
+      await _getCoordinatesFromAddress(_selectedAddress);
+    }
+    await _calculateDistance();
+  }
+
+  Future<void> _getCurrentLocation() async {
     // check if the user have permission to access location service
     servicePermission = await Geolocator.isLocationServiceEnabled();
     if (!servicePermission) {
@@ -50,11 +71,14 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
       permission = await Geolocator.requestPermission();
     }
 
-    return await Geolocator.getCurrentPosition();
+    Position position = await Geolocator.getCurrentPosition();
+    setState(() {
+      _currentLocation = position;
+    });
   }
 
   // convert the coorninate into address
-  _getAddressFromCoordinates() async {
+  _getAddressFromCoordinates(Position location) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(_currentLocation!.latitude, _currentLocation!.longitude);
       Placemark place = placemarks[0];
@@ -66,23 +90,13 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
     }
   }
 
-  String _getSelectedAddress() {
-    String address = "Chicago";
-      setState(() {
-        _selectedAddress = address;
-      });
-    return address;
-  }
-
-  _getCoordinatesFromAddress() async {
+  _getCoordinatesFromAddress(String address) async {
     try {
-
-      List<Location> locations = await locationFromAddress(_selectedAddress);
+      List<Location> locations = await locationFromAddress(address);
 
       setState(() {
         _selectedLocation = locations.first;
       });
-      print('Selected location - Latitude: ${_selectedLocation?.latitude}, Longitude: ${_selectedLocation?.longitude}');
     } catch (e) {
       print('Error: ${e}');
     }
@@ -120,30 +134,8 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ElevatedButton(
-              onPressed: () async {
-                _currentLocation = await _getCurrentLocation();
-                await _getAddressFromCoordinates();
-              }, 
-              child: Text("get current location")
-            ),
-
-            SizedBox(height: 30),
-
             Text(
-              "Current location coordinates", 
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold
-              )
-            ),
-            SizedBox(height: 6),
-            Text("Latitude: ${_currentLocation?.latitude}; Longitude: ${_currentLocation?.longitude}"),
-
-            SizedBox(height: 30),
-
-            Text(
-              "Current location address", 
+              "Current Location", 
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold
@@ -151,53 +143,51 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
             ),
             SizedBox(height: 6),
             Text("${_currentAddress}"),
+            Text("Latitude: ${_currentLocation?.latitude}; Longitude: ${_currentLocation?.longitude}"),
 
-            SizedBox(height: 50),
-            
+            SizedBox(height: 20),
+
             ElevatedButton(
               onPressed: () async {
-                _selectedAddress = _getSelectedAddress();
-                await _getCoordinatesFromAddress();
-                print("${_selectedLocation}");
-                print("${_selectedAddress}");
+                await _getCurrentLocation();
+                if (_currentLocation != null) {
+                  await _getAddressFromCoordinates(_currentLocation!);
+                }
               }, 
-              child: Text("get selected location")
+              child: Text("update location")
             ),
 
-            SizedBox(height: 30),
+            SizedBox(height: 50),
 
             Text(
-              "Selected location coordinates", 
+              "Select City", 
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold
               )
             ),
             SizedBox(height: 6),
-            Text("Latitude: ${_selectedLocation?.latitude}; Longitude: ${_selectedLocation?.longitude}"),
-
-            SizedBox(height: 30),
-
-            Text(
-              "Selected location address", 
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold
-              )
+            DropdownButton(
+              value: _selectedAddress,
+              items: cityList.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (String? value) async {
+                setState(() {
+                  _selectedAddress = value!;
+                });
+                await _getCoordinatesFromAddress(value!);
+              },
+              underline: Container(
+                height: 2,
+                color: Colors.deepPurpleAccent,
+              ),
             ),
-            SizedBox(height: 6),
-            Text("${_selectedAddress}"),
 
             SizedBox(height: 50),
-            
-            ElevatedButton(
-              onPressed: () async {
-                await _calculateDistance();
-              }, 
-              child: Text("calculate distance")
-            ),
-
-            SizedBox(height: 30),
 
             Text(
               "Distance", 
@@ -208,6 +198,15 @@ class _GeolocatorAppState extends State<GeolocatorApp> {
             ),
             SizedBox(height: 6),
             Text("${_distance} miles"),
+            
+            SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed: () async {
+                await _calculateDistance();
+              }, 
+              child: Text("calculate distance")
+            ),
           ],
       )),
     );
