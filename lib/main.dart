@@ -142,8 +142,7 @@ class _LocationScreenState extends State<LocationScreen> {
               )
             ),
             SizedBox(height: 6),
-            Text("${_currentAddress}"),
-            Text("Latitude: ${_currentLocation?.latitude}; Longitude: ${_currentLocation?.longitude}"),
+            LocationCard(currentAddress: _currentAddress, currentLocation: _currentLocation),
 
             SizedBox(height: 20),
 
@@ -154,10 +153,10 @@ class _LocationScreenState extends State<LocationScreen> {
                   await _getAddressFromCoordinates(_currentLocation!);
                 }
               }, 
-              child: Text("update location")
+              child: Text("Update")
             ),
 
-            SizedBox(height: 50),
+            SizedBox(height: 60),
 
             Text(
               "Select City", 
@@ -187,7 +186,7 @@ class _LocationScreenState extends State<LocationScreen> {
               ),
             ),
 
-            SizedBox(height: 50),
+            SizedBox(height: 60),
 
             Text(
               "Distance", 
@@ -204,11 +203,44 @@ class _LocationScreenState extends State<LocationScreen> {
             ElevatedButton(
               onPressed: () async {
                 await _calculateDistance();
-              }, 
-              child: Text("calculate distance")
+              },
+              child: Text("Calculate")
             ),
           ],
       )),
+    );
+  }
+}
+
+class LocationCard extends StatelessWidget {
+  const LocationCard({
+    super.key,
+    required this.currentAddress,
+    required this.currentLocation,
+  });
+
+  final String currentAddress;
+  final Position? currentLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium!.copyWith(
+      color: theme.colorScheme.onPrimary,
+    );
+
+    return Card(
+      color: theme.colorScheme.primary,
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          children: [
+            Text("${currentAddress}", style: style),
+            SizedBox(height: 5),
+            Text("(${currentLocation?.latitude}, ${currentLocation?.longitude})", style: style),
+          ],
+        ),
+      ),
     );
   }
 }
